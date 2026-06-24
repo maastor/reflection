@@ -22,7 +22,7 @@ codebase over time.
    └─ apply on approval, then append a changelog entry
 ```
 
-One question, one issue, one minimal fix per round. Be brief. YAGNI.
+One question, one issue, one minimal fix per round.
 
 ## Questions
 
