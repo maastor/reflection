@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+.env.local
+**/.DS_Store
+node_modules/
+.claude/worktrees/
+
+# per-repo reflection state is the user's, not the plugin's
+# (kept out of the plugin repo's own runs)
+/reflection-changelog.md
+/.reflection/

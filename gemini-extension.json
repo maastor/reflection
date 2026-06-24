@@ -1,0 +1,6 @@
+{
+  "name": "reflection",
+  "description": "A self-improving codebase reflection loop. Reflect on a random question, find one validated issue, propose a minimal fix, log the outcome.",
+  "version": "0.1.0",
+  "contextFileName": "GEMINI.md"
+}

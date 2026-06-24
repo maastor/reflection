@@ -1,0 +1,6 @@
+---
+description: Summarize the reflection-changelog.md feedback loop
+---
+Summarize reflection-changelog.md: rounds logged, coverage per question slug,
+open (proposed/deferred) items, and recently applied fixes. Keep it brief and
+scannable. If the file is missing, suggest /reflection-init.

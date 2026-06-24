@@ -1,0 +1,8 @@
+{
+  "name": "reflection-opencode-plugin",
+  "version": "0.1.0",
+  "description": "reflection plugin for opencode — on-demand self-improvement loop + slash commands",
+  "type": "module",
+  "main": "plugin.js",
+  "private": true
+}

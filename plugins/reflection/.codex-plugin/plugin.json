@@ -1,0 +1,39 @@
+{
+  "name": "reflection",
+  "version": "0.1.0",
+  "description": "A self-improving codebase reflection loop. Reflect on one question, find one issue, propose a minimal fix, log it.",
+  "author": {
+    "name": "maastor"
+  },
+  "homepage": "https://github.com/maastor/reflection",
+  "repository": "https://github.com/maastor/reflection",
+  "license": "MIT",
+  "keywords": [
+    "productivity",
+    "code-quality",
+    "refactoring",
+    "self-improvement"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Reflection",
+    "shortDescription": "Reflect on the codebase. Find one issue, propose a minimal fix, log it.",
+    "longDescription": "A deliberate, feedback-driven self-improvement loop. Each round reflects on one randomly chosen question about the codebase, surfaces one validated issue, proposes a minimal fix for approval, and logs the outcome to reflection-changelog.md.",
+    "developerName": "maastor",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/maastor/reflection",
+    "privacyPolicyURL": "https://github.com/maastor/reflection/blob/main/README.md",
+    "termsOfServiceURL": "https://github.com/maastor/reflection/blob/main/LICENSE",
+    "defaultPrompt": [
+      "Reflect on this codebase: pick one question, find one issue, propose a minimal fix."
+    ],
+    "composerIcon": "./assets/reflection-small.svg",
+    "logo": "./assets/reflection.svg",
+    "screenshots": [],
+    "brandColor": "#2A9D8F"
+  }
+}

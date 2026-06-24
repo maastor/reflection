@@ -1,0 +1,33 @@
+{
+  "name": "reflection",
+  "description": "A self-improving codebase reflection loop. Reflect on one randomly chosen question, find one validated issue, propose a minimal fix, and log the outcome to reflection-changelog.md.",
+  "author": {
+    "name": "maastor"
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/src/hooks/reflection-activate.js\"",
+            "timeout": 5,
+            "statusMessage": "Checking reflection state..."
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/src/hooks/reflection-tracker.js\"",
+            "timeout": 5,
+            "statusMessage": "Tracking reflection..."
+          }
+        ]
+      }
+    ]
+  }
+}

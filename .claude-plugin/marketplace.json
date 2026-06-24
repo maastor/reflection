@@ -1,0 +1,16 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "reflection",
+  "description": "A self-improving codebase reflection loop for Claude Code. Reflect on a random question, find one validated issue, propose a minimal fix, log the outcome.",
+  "owner": {
+    "name": "maastor"
+  },
+  "plugins": [
+    {
+      "name": "reflection",
+      "description": "Reflect on the codebase, one question at a time. Find one issue, propose a minimal fix, log it.",
+      "source": "./",
+      "category": "productivity"
+    }
+  ]
+}

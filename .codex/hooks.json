@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'REFLECTION AVAILABLE. Run /reflection (or say \"reflect on the codebase\") to start a self-improvement round: pick one question, find one validated issue, propose a minimal fix (wait for approval), then log to reflection-changelog.md. One question, one issue, one fix per round.'",
+            "timeout": 5,
+            "statusMessage": "Reflection ready"
+          }
+        ]
+      }
+    ]
+  }
+}
