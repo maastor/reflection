@@ -15,6 +15,8 @@ const { getQuestions, readFlag } = require('./reflection-config');
 
 const claudeDir = process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude');
 const flagPath = path.join(claudeDir, '.reflection-active');
+const autoPath = path.join(claudeDir, '.reflection-auto');
+const loopPath = path.join(claudeDir, '.reflection-loop');
 const settingsPath = path.join(claudeDir, 'settings.json');
 
 let input = '';
@@ -35,10 +37,19 @@ function run(data) {
     const questions = getQuestions({ cwd });
     const hit = questions.find(([s]) => s === active);
     const question = hit ? hit[1] : active;
-    out +=
-      'REFLECTION ROUND IN PROGRESS on: "' + question + '" (slug: ' + active + '). ' +
-      'Resume the loop: surface one validated issue, propose a minimal fix, log to ' +
-      'reflection-changelog.md. Run /reflection stop to end it.';
+    if (fs.existsSync(loopPath)) {
+      out +=
+        'REFLECTION LOOP IN PROGRESS (last focus: "' + question + '"). Resume the autonomous loop: ' +
+        'pick a fresh question, find one validated issue, apply + commit the fix, log it, and watch the ' +
+        'time/round budget. Run /reflection stop to end it.';
+    } else {
+      const auto = fs.existsSync(autoPath);
+      out +=
+        'REFLECTION ROUND IN PROGRESS on: "' + question + '" (slug: ' + active + ')' +
+        (auto ? ' [auto-apply]' : '') + '. Resume the loop: surface one validated issue, ' +
+        (auto ? 'apply the minimal fix and commit it' : 'propose a minimal fix') +
+        ', then log to reflection-changelog.md. Run /reflection stop to end it.';
+    }
   }
 
   out += statuslineNudge();

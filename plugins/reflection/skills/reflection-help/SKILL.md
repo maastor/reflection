@@ -12,9 +12,11 @@ Display this quick reference, then stop.
 
 **Commands**
 ```
-/reflection            start a round (random question)
+/reflection            start a round (random question; propose fix, wait for approval)
 /reflection <slug>     start a round on a specific question
-/reflection stop       end the round
+/reflection auto       start a round that applies + commits the fix (no approval)
+/reflection stop       end the round / loop
+/reflection-loop [b]   run rounds autonomously until a budget/goal (auto-apply)
 /reflection-init       seed reflection-changelog.md (+ optional config)
 /reflection-log        summarize past reflections
 /reflection-help       this card
@@ -22,14 +24,23 @@ Display this quick reference, then stop.
 
 **The loop** — pick one question → read the changelog → investigate deeply →
 surface one validated issue (`file:line`) → propose a minimal fix → apply on
-approval → log the outcome. One question, one issue, one fix per round. YAGNI.
+approval (or auto-apply + commit) → log the outcome. One question, one issue, one
+fix per round. YAGNI.
+
+**Auto mode** — `/reflection auto` (or `autoApply: true` in config) applies the
+fix and commits it as `reflection(<slug>): …` without asking.
+
+**Loop** — `/reflection-loop [30m|1h] [rounds=N] [clean=N]` repeats rounds in auto
+mode until timeout / max rounds / N consecutive clean rounds (goal achieved).
 
 **Question slugs** — `bugs refactor tests architecture packaging quality
 best-practices performance error-handling security docs dependencies consistency
 observability tooling`
 
-**Config** (optional, per repo): `.reflection/config.json` with `rotationWindow`
-and a custom `questions` bank. Env: `REFLECTION_ROTATION_WINDOW`.
+**Config** (optional, per repo): `.reflection/config.json` with `rotationWindow`,
+`autoApply`, a custom `questions` bank, and `loop` ({timeoutMin, maxRounds,
+cleanStreak}). Env: `REFLECTION_ROTATION_WINDOW`.
 
-**State** — a flag at `$CLAUDE_CONFIG_DIR/.reflection-active` holds the active
-slug; a `[REFLECT:<slug>]` statusline badge shows it. Cleared by `/reflection stop`.
+**State** — flags at `$CLAUDE_CONFIG_DIR/.reflection-{active,auto,loop}` hold the
+active slug + mode; a `[REFLECT:<slug>]` / `[REFLECT:<slug>:auto]` /
+`[REFLECT:<slug>:loop]` statusline badge shows it. Cleared by `/reflection stop`.

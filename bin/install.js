@@ -442,9 +442,9 @@ function installViaSkills(ctx, prov) {
 }
 
 // ── opencode native install ───────────────────────────────────────────────
-const OPENCODE_SKILL_DIRS  = ['reflection', 'reflection-log', 'reflection-init', 'reflection-help'];
+const OPENCODE_SKILL_DIRS  = ['reflection', 'reflection-loop', 'reflection-log', 'reflection-init', 'reflection-help'];
 const OPENCODE_AGENT_FILES = ['reflector.md'];
-const OPENCODE_COMMAND_FILES = ['reflection.md', 'reflection-init.md', 'reflection-log.md', 'reflection-help.md'];
+const OPENCODE_COMMAND_FILES = ['reflection.md', 'reflection-loop.md', 'reflection-init.md', 'reflection-log.md', 'reflection-help.md'];
 const OPENCODE_PLUGIN_REL = './plugins/reflection/plugin.js';
 const OPENCODE_AGENTS_MD_SENTINEL = 'Reflection (self-improvement loop)';
 const OPENCODE_AGENTS_MD_BEGIN = '<!-- reflection-begin -->';

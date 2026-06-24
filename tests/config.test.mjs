@@ -73,3 +73,31 @@ test('flag write/read/clear round-trips and rejects bad slugs', () => {
   fs.writeFileSync(flag, 'NOT A SLUG !!!');
   assert.equal(config.readFlag(flag), null);
 });
+
+test('parseDurationMin handles m/h/bare', () => {
+  assert.equal(config.parseDurationMin('30'), 30);
+  assert.equal(config.parseDurationMin('30m'), 30);
+  assert.equal(config.parseDurationMin('1h'), 60);
+  assert.equal(config.parseDurationMin('2hr'), 120);
+  assert.equal(config.parseDurationMin('bad'), null);
+});
+
+test('parseLoopArgs overrides base from tokens', () => {
+  const base = { timeoutMin: 30, maxRounds: 20, cleanStreak: 2 };
+  const out = config.parseLoopArgs(['1h', 'rounds=15', 'clean=3'], base);
+  assert.deepEqual(out, { timeoutMin: 60, maxRounds: 15, cleanStreak: 3 });
+  // unknown tokens ignored, base preserved
+  assert.deepEqual(config.parseLoopArgs(['xyz'], base), base);
+});
+
+test('getAutoDefault / getLoopConfig read repo config', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'refl-auto-'));
+  fs.mkdirSync(path.join(dir, '.reflection'));
+  fs.writeFileSync(path.join(dir, '.reflection/config.json'), JSON.stringify({
+    autoApply: true, loop: { timeoutMin: 45, maxRounds: 5, cleanStreak: 4 },
+  }));
+  assert.equal(config.getAutoDefault(dir), true);
+  assert.deepEqual(config.getLoopConfig(dir), { timeoutMin: 45, maxRounds: 5, cleanStreak: 4 });
+  // defaults when no config
+  assert.equal(config.getAutoDefault(os.tmpdir()), false);
+});

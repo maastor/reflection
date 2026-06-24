@@ -58,16 +58,32 @@ See [INSTALL.md](./INSTALL.md) for details and uninstall.
 ## Usage
 
 ```
-/reflection            start a round on a random question
+/reflection            start a round on a random question (propose fix, wait for approval)
 /reflection tests      start a round on a specific question
-/reflection stop       end the round
+/reflection auto       apply + commit the fix without approval
+/reflection stop       end the round / loop
+/reflection-loop [b]   run rounds autonomously until a budget/goal (auto-apply)
 /reflection-init       seed reflection-changelog.md (+ optional config)
 /reflection-log        summarize past reflections
 /reflection-help       quick reference
 ```
 
 While a round is active, a per-turn reminder keeps the agent anchored to its
-question and a `[REFLECT:<slug>]` statusline badge shows what's in flight.
+question and a `[REFLECT:<slug>]` statusline badge shows what's in flight
+(`:auto` / `:loop` suffix in those modes).
+
+### Auto-apply mode
+
+By default reflection **proposes** a fix and waits for your approval. Add `auto`
+(or set `"autoApply": true` in `.reflection/config.json`) to apply the minimal fix
+directly and commit it as `reflection(<slug>): …` — one commit per fix.
+
+### Autonomous loop
+
+`/reflection-loop [30m|1h] [rounds=N] [clean=N]` repeats rounds in auto mode until
+the time budget, max rounds, or N consecutive clean rounds (goal achieved) is hit.
+Each round commits its fix; stop early with `/reflection stop`. Defaults: 30m,
+20 rounds, 2 clean — override per-repo under `"loop"` in `.reflection/config.json`.
 
 ## How it works
 
@@ -87,7 +103,9 @@ Per-repo `.reflection/config.json`:
 ```json
 {
   "rotationWindow": 5,
-  "questions": [["bugs", "Where would a bug be?"], ["tests", "Improve tests?"]]
+  "autoApply": false,
+  "questions": [["bugs", "Where would a bug be?"], ["tests", "Improve tests?"]],
+  "loop": { "timeoutMin": 30, "maxRounds": 20, "cleanStreak": 2 }
 }
 ```
 
