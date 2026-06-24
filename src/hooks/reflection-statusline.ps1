@@ -21,6 +21,14 @@ $slug = (Get-Content -LiteralPath $flag -Raw).Trim().ToLower()
 $slug = ($slug -replace '[^a-z0-9-]', '')
 if ([string]::IsNullOrEmpty($slug)) { exit 0 }
 
+# Mode suffix: :loop takes precedence over :auto.
+$suffix = ''
+$loopFlag = Join-Path $configDir '.reflection-loop'
+$autoFlag = Join-Path $configDir '.reflection-auto'
+function NotLink($p) { $i = Get-Item -LiteralPath $p -Force; -not ($i.Attributes -band [IO.FileAttributes]::ReparsePoint) }
+if ((Test-Path -LiteralPath $loopFlag) -and (NotLink $loopFlag)) { $suffix = ':loop' }
+elseif ((Test-Path -LiteralPath $autoFlag) -and (NotLink $autoFlag)) { $suffix = ':auto' }
+
 # Teal badge (ANSI; Windows Terminal / modern consoles render it).
 $esc = [char]27
-Write-Host -NoNewline "$esc[38;5;37m[REFLECT:$slug]$esc[0m"
+Write-Host -NoNewline "$esc[38;5;37m[REFLECT:$slug$suffix]$esc[0m"

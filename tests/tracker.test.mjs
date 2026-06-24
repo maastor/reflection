@@ -23,7 +23,12 @@ function runTracker(prompt, configDir, cwd) {
 function tmpDirs() {
   const configDir = fs.mkdtempSync(path.join(os.tmpdir(), 'refl-cfg-'));
   const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'refl-cwd-'));
-  return { configDir, cwd, flag: path.join(configDir, '.reflection-active') };
+  return {
+    configDir, cwd,
+    flag: path.join(configDir, '.reflection-active'),
+    autoFlag: path.join(configDir, '.reflection-auto'),
+    loopFlag: path.join(configDir, '.reflection-loop'),
+  };
 }
 
 test('/reflection starts a round: writes flag + injects goal block', () => {
@@ -84,4 +89,70 @@ test('/reflection-log blocks the prompt with a summary', () => {
   const { json } = runTracker('/reflection-log', configDir, cwd);
   assert.equal(json.decision, 'block');
   assert.match(json.reason, /Reflection log/);
+});
+
+test('/reflection auto sets the auto flag + goal mentions auto-apply', () => {
+  const { configDir, cwd, flag, autoFlag, loopFlag } = tmpDirs();
+  const { json } = runTracker('/reflection auto', configDir, cwd);
+  assert.ok(fs.existsSync(flag), 'slug flag written');
+  assert.ok(fs.existsSync(autoFlag), 'auto flag written');
+  assert.ok(!fs.existsSync(loopFlag), 'loop flag not written');
+  assert.match(json.hookSpecificOutput.additionalContext, /auto-apply/);
+  assert.match(json.hookSpecificOutput.additionalContext, /git commit -m/);
+});
+
+test('/reflection <slug> auto combines slug + auto', () => {
+  const { configDir, cwd, flag, autoFlag } = tmpDirs();
+  runTracker('/reflection security auto', configDir, cwd);
+  assert.equal(fs.readFileSync(flag, 'utf8').trim(), 'security');
+  assert.ok(fs.existsSync(autoFlag));
+});
+
+test('plain /reflection does not set auto (approval default)', () => {
+  const { configDir, cwd, autoFlag } = tmpDirs();
+  runTracker('/reflection', configDir, cwd);
+  assert.ok(!fs.existsSync(autoFlag), 'no auto flag by default');
+});
+
+test('autoApply config makes plain /reflection auto', () => {
+  const { configDir, cwd, autoFlag } = tmpDirs();
+  fs.mkdirSync(path.join(cwd, '.reflection'));
+  fs.writeFileSync(path.join(cwd, '.reflection/config.json'), JSON.stringify({ autoApply: true }));
+  runTracker('/reflection', configDir, cwd);
+  assert.ok(fs.existsSync(autoFlag), 'auto flag set from config');
+});
+
+test('/reflection-loop sets loop + auto flags and injects loop block', () => {
+  const { configDir, cwd, flag, autoFlag, loopFlag } = tmpDirs();
+  const { json } = runTracker('/reflection-loop 45m rounds=7 clean=3', configDir, cwd);
+  assert.ok(fs.existsSync(flag) && fs.existsSync(autoFlag) && fs.existsSync(loopFlag));
+  assert.match(fs.readFileSync(loopFlag, 'utf8'), /timeout=45m rounds=7 clean=3/);
+  const ctx = json.hookSpecificOutput.additionalContext;
+  assert.match(ctx, /REFLECTION LOOP ACTIVE/);
+  assert.match(ctx, /up to 45 min/);
+  assert.match(ctx, /max 7 rounds/);
+  assert.match(ctx, /3 consecutive/);
+});
+
+test('loop reminder fires while loop active', () => {
+  const { configDir, cwd } = tmpDirs();
+  runTracker('/reflection-loop', configDir, cwd);
+  const { json } = runTracker('continue', configDir, cwd);
+  assert.match(json.hookSpecificOutput.additionalContext, /REFLECTION LOOP ACTIVE/);
+});
+
+test('stop clears all three flags', () => {
+  const { configDir, cwd, flag, autoFlag, loopFlag } = tmpDirs();
+  runTracker('/reflection-loop', configDir, cwd);
+  assert.ok(fs.existsSync(flag) && fs.existsSync(autoFlag) && fs.existsSync(loopFlag));
+  runTracker('stop reflection', configDir, cwd);
+  assert.ok(!fs.existsSync(flag) && !fs.existsSync(autoFlag) && !fs.existsSync(loopFlag));
+});
+
+test('starting a plain round after auto clears the stale auto flag', () => {
+  const { configDir, cwd, autoFlag } = tmpDirs();
+  runTracker('/reflection auto', configDir, cwd);
+  assert.ok(fs.existsSync(autoFlag));
+  runTracker('/reflection tests', configDir, cwd);
+  assert.ok(!fs.existsSync(autoFlag), 'auto flag cleared on plain start');
 });

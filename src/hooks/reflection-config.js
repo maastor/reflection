@@ -315,6 +315,61 @@ function clearFlag(flagPath) {
   try { fs.unlinkSync(flagPath); } catch (e) {}
 }
 
+// Symlink-safe read of a small meta file (auto / loop sidecar flags). Returns
+// trimmed content, or null on any anomaly. Used to read the loop budget spec.
+function readMeta(p) {
+  try {
+    const st = fs.lstatSync(p);
+    if (st.isSymbolicLink() || !st.isFile() || st.size > 128) return null;
+    return fs.readFileSync(p, 'utf8').trim();
+  } catch (e) { return null; }
+}
+
+// ── Auto-apply mode ─────────────────────────────────────────────────────────
+// When on, a reflection round applies its fix without approval and commits it.
+function getAutoDefault(cwd) {
+  return loadConfig(cwd).autoApply === true;
+}
+
+// ── Loop mode ───────────────────────────────────────────────────────────────
+const DEFAULT_LOOP = { timeoutMin: 30, maxRounds: 20, cleanStreak: 2 };
+
+function posInt(v, d) { const n = parseInt(v, 10); return Number.isFinite(n) && n > 0 ? n : d; }
+
+function getLoopConfig(cwd) {
+  const l = loadConfig(cwd).loop || {};
+  return {
+    timeoutMin: posInt(l.timeoutMin, DEFAULT_LOOP.timeoutMin),
+    maxRounds: posInt(l.maxRounds, DEFAULT_LOOP.maxRounds),
+    cleanStreak: posInt(l.cleanStreak, DEFAULT_LOOP.cleanStreak),
+  };
+}
+
+// Parse a duration token to minutes: "30"/"30m"/"30min" → 30, "1h"/"2hr" → 60/120.
+function parseDurationMin(tok) {
+  const m = /^(\d+)\s*(m|min|h|hr)?$/i.exec(String(tok || '').trim());
+  if (!m) return null;
+  const n = parseInt(m[1], 10);
+  const u = (m[2] || 'm').toLowerCase();
+  return (u === 'h' || u === 'hr') ? n * 60 : n;
+}
+
+// Apply loop-arg tokens (e.g. "30m", "rounds=10", "clean=3") over a base config.
+function parseLoopArgs(tokens, base) {
+  const out = Object.assign({}, base);
+  for (const t of tokens || []) {
+    if (!t) continue;
+    let m;
+    if ((m = /^rounds?=(\d+)$/i.exec(t))) out.maxRounds = parseInt(m[1], 10);
+    else if ((m = /^clean=(\d+)$/i.exec(t))) out.cleanStreak = parseInt(m[1], 10);
+    else if ((m = /^(?:timeout=)?(\d+(?:m|min|h|hr)?)$/i.exec(t))) {
+      const d = parseDurationMin(m[1]);
+      if (d) out.timeoutMin = d;
+    }
+  }
+  return out;
+}
+
 module.exports = {
   DEFAULT_ROTATION_WINDOW,
   DEFAULT_QUESTIONS,
@@ -332,4 +387,10 @@ module.exports = {
   safeWriteFlag,
   readFlag,
   clearFlag,
+  readMeta,
+  getAutoDefault,
+  getLoopConfig,
+  parseLoopArgs,
+  parseDurationMin,
+  DEFAULT_LOOP,
 };

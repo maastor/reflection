@@ -32,11 +32,17 @@ Be brief and concise. Follow YAGNI — fix what's needed, nothing more.
    question, say so plainly and log a "no issue found" entry.
 5. **Propose a minimal fix.** Concrete and small (YAGNI). Show the change. Do NOT
    edit yet — wait for the user to approve.
-6. **Apply on approval, then log.** After the user approves and the fix is applied
-   (or rejected/deferred), append an entry to `reflection-changelog.md` in the
-   format below.
+
+   **Auto-apply mode** (the round was started with `/reflection auto`, or
+   `autoApply: true` in `.reflection/config.json`): skip approval. Apply the
+   minimal fix directly, verify with fast tests/build if available, then commit
+   it on the current branch — one commit per fix:
+   `git commit -m "reflection(<slug>): <short summary>"`.
+6. **Apply on approval (or auto), then log.** Append an entry to
+   `reflection-changelog.md` in the format below (`Status: applied`).
 7. **Close out.** Tell the user the round is logged. They can run `/reflection`
-   again for a new question or `/reflection stop` to end.
+   again for a new question, `/reflection-loop` to run rounds autonomously, or
+   `/reflection stop` to end.
 
 ## Questions
 
@@ -80,6 +86,8 @@ question rotation — keep it.
 
 - One question, one issue, one minimal fix per round. Resist scope creep.
 - Validate before claiming. No speculative "this might be a bug" — confirm it.
-- Never edit before the user approves the proposed fix.
+- In default mode, never edit before the user approves the proposed fix. In
+  auto-apply mode, never commit a fix that breaks the build/tests — revert and
+  log it as deferred instead.
 - Keep findings short: location, problem, fix. No filler.
 - Don't re-litigate issues already resolved in the changelog.

@@ -19,5 +19,14 @@ SLUG=$(printf '%s' "$SLUG" | tr -cd 'a-z0-9-')
 
 [ -z "$SLUG" ] && exit 0
 
+# Mode suffix: :loop (autonomous) takes precedence over :auto (auto-apply).
+DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+SUFFIX=""
+if [ -f "$DIR/.reflection-loop" ] && [ ! -L "$DIR/.reflection-loop" ]; then
+  SUFFIX=":loop"
+elif [ -f "$DIR/.reflection-auto" ] && [ ! -L "$DIR/.reflection-auto" ]; then
+  SUFFIX=":auto"
+fi
+
 # Teal badge.
-printf '\033[38;5;37m[REFLECT:%s]\033[0m' "$SLUG"
+printf '\033[38;5;37m[REFLECT:%s%s]\033[0m' "$SLUG" "$SUFFIX"

@@ -36,7 +36,7 @@ const config = loadConfig();
 
 const {
   getQuestions, getRotationWindow, recentSlugs, pickSlug,
-  safeWriteFlag, readFlag,
+  safeWriteFlag, readFlag, getAutoDefault, getLoopConfig, parseLoopArgs,
 } = config;
 
 function opencodeConfigDir() {
@@ -44,7 +44,16 @@ function opencodeConfigDir() {
   return path.join(os.homedir(), '.config', 'opencode');
 }
 
-const flagPath = path.join(opencodeConfigDir(), '.reflection-active');
+const ocDir = opencodeConfigDir();
+const flagPath = path.join(ocDir, '.reflection-active');
+const autoPath = path.join(ocDir, '.reflection-auto');
+const loopPath = path.join(ocDir, '.reflection-loop');
+
+function clearAll() {
+  for (const p of [flagPath, autoPath, loopPath]) {
+    try { if (existsSync(p)) unlinkSync(p); } catch (e) {}
+  }
+}
 
 function questionFor(slug) {
   const hit = getQuestions().find(([s]) => s === slug);
@@ -52,14 +61,24 @@ function questionFor(slug) {
 }
 
 function reminderLine(slug) {
-  return (
-    'REFLECTION ACTIVE on: "' + questionFor(slug) + '" (slug: ' + slug + '). ' +
-    'Reflect on ONE concrete issue (cite file:line, validate it), propose a minimal ' +
-    'fix (YAGNI) — wait for approval before editing — then log to reflection-changelog.md.'
-  );
+  if (existsSync(loopPath)) {
+    return 'REFLECTION LOOP ACTIVE. Keep iterating: pick a fresh question, find one validated issue, ' +
+      'apply + commit the fix (reflection(<slug>): …), log it, and watch the time/round budget. ' +
+      'Stop on timeout / max rounds / clean streak, or /reflection stop.';
+  }
+  if (existsSync(autoPath)) {
+    return 'REFLECTION ACTIVE (auto-apply) on: "' + questionFor(slug) + '" (slug: ' + slug + '). ' +
+      'Find one validated issue (file:line), apply the minimal fix, commit it (reflection(' + slug +
+      '): …), then log to reflection-changelog.md.';
+  }
+  return 'REFLECTION ACTIVE on: "' + questionFor(slug) + '" (slug: ' + slug + '). ' +
+    'Reflect on ONE concrete issue (cite file:line, validate it), propose a minimal fix (YAGNI) — ' +
+    'wait for approval before editing — then log to reflection-changelog.md.';
 }
 
-// Parse a prompt → { action: 'start'|'stop', slug? } or null.
+const AUTO_TOKENS = new Set(['auto', 'yolo', '--auto', '-y']);
+
+// Parse a prompt → { action: 'start'|'stop'|'loop', slug?, auto?, tokens? } or null.
 function parseChange(promptRaw) {
   let prompt = (promptRaw || '').trim();
   const wrapped = /^(["'`])([\s\S]*)\1$/.exec(prompt);
@@ -68,55 +87,68 @@ function parseChange(promptRaw) {
   if (!prompt) return null;
 
   // Deactivation first.
-  if (/^\/reflection(?::reflection)?\s+(stop|done|off|end)\b/.test(prompt) ||
-      /\b(stop|end|finish|deactivate|turn off)\b.*\breflection\b/.test(prompt) ||
-      /\breflection\b.*\b(stop|done|off|end|finished)\b/.test(prompt)) {
+  if (/^\/reflection(?::reflection)?(?:-loop)?\s+(stop|done|off|end)\b/.test(prompt) ||
+      /\b(stop|end|finish|deactivate|turn off|halt)\b.*\breflection\b/.test(prompt) ||
+      /\breflection\b.*\b(stop|done|off|end|finished|halt)\b/.test(prompt)) {
     return { action: 'stop' };
   }
 
-  // opencode expands the /reflection command file body before chat.message
-  // fires; recover the slug from the template's first line if present.
-  const tpl = /^begin a reflection round\.\s*(\S*)/.exec(prompt);
-  if (tpl) {
-    const arg = tpl[1] || '';
-    return { action: 'start', slug: validSlug(arg) };
+  // Loop — slash command or expanded command-file body.
+  const loopSlash = /^\/reflection(?::reflection)?-loop\b(.*)$/.exec(prompt);
+  const loopTpl = /^start an autonomous reflection loop\.\s*(.*)$/.exec(prompt);
+  if (loopSlash || loopTpl) {
+    const tokens = ((loopSlash ? loopSlash[1] : loopTpl[1]) || '').trim().split(/\s+/).filter(Boolean);
+    return { action: 'loop', tokens };
   }
 
-  if (prompt.startsWith('/reflection')) {
-    const parts = prompt.split(/\s+/);
-    if (parts[0] === '/reflection' || parts[0] === '/reflection:reflection') {
-      return { action: 'start', slug: validSlug(parts[1] || '') };
+  // Single round — slash command or expanded "Begin a reflection round. …" body.
+  const tpl = /^begin a reflection round\.\s*(.*)$/.exec(prompt);
+  const slash = /^\/reflection(?::reflection)?\b(.*)$/.exec(prompt);
+  if (tpl || slash) {
+    const tokens = ((slash ? slash[1] : tpl[1]) || '').trim().split(/\s+/).filter(Boolean);
+    let slug = null, auto = false;
+    for (const t of tokens) {
+      if (AUTO_TOKENS.has(t)) auto = true;
+      else if (getQuestions().some(([s]) => s === t)) slug = t;
     }
+    return { action: 'start', slug, auto };
   }
 
   if (/\breflect\b.*\b(codebase|code|repo|repository|project)\b/.test(prompt) ||
       /\breflection mode\b/.test(prompt) ||
       /\bself[-\s]?review\b/.test(prompt)) {
-    return { action: 'start', slug: null };
+    return { action: 'start', slug: null, auto: /\bauto[-\s]?(fix|apply)?\b/.test(prompt) };
   }
 
   return null;
 }
 
-function validSlug(arg) {
-  if (!arg) return null;
-  return getQuestions().some(([s]) => s === arg) ? arg : null;
+function pickRandom() {
+  const cwd = process.cwd();
+  const recent = recentSlugs(path.join(cwd, 'reflection-changelog.md'), getRotationWindow(cwd));
+  return pickSlug(getQuestions({ cwd }), recent, Math.random());
 }
 
 function applyChange(change) {
   if (!change) return;
-  if (change.action === 'stop') {
-    try { if (existsSync(flagPath)) unlinkSync(flagPath); } catch (e) {}
+  if (change.action === 'stop') { clearAll(); return; }
+  if (change.action === 'loop') {
+    const cfg = parseLoopArgs(change.tokens, getLoopConfig(process.cwd()));
+    const slug = pickRandom();
+    if (!slug) return;
+    safeWriteFlag(flagPath, slug);
+    safeWriteFlag(autoPath, '1');
+    safeWriteFlag(loopPath, 'timeout=' + cfg.timeoutMin + 'm rounds=' + cfg.maxRounds + ' clean=' + cfg.cleanStreak);
     return;
   }
   if (change.action === 'start') {
-    let slug = change.slug;
-    if (!slug) {
-      const cwd = process.cwd();
-      const recent = recentSlugs(path.join(cwd, 'reflection-changelog.md'), getRotationWindow(cwd));
-      slug = pickSlug(getQuestions({ cwd }), recent, Math.random());
-    }
-    if (slug) safeWriteFlag(flagPath, slug);
+    const slug = change.slug || pickRandom();
+    if (!slug) return;
+    safeWriteFlag(flagPath, slug);
+    const auto = change.auto || getAutoDefault(process.cwd());
+    if (auto) safeWriteFlag(autoPath, '1');
+    else { try { if (existsSync(autoPath)) unlinkSync(autoPath); } catch (e) {} }
+    try { if (existsSync(loopPath)) unlinkSync(loopPath); } catch (e) {}
   }
 }
 
